@@ -12,19 +12,15 @@ YEARS = 1992..2016
 require 'openssl'
 OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
 
-def download_results(url, offset, dir)
-    doc = Nokogiri::HTML(open("#{url}&RS=#{offset}"))
-
-    decision_urls = doc.css('#results-area a').collect { |a| a['href'] }
-
-    return if decision_urls.length == 0
-
-    for decision_url in decision_urls
-        file = open(decision_url)
-        IO.copy_stream(file, "#{dir}/#{file.base_uri.to_s.split('/')[-1]}")
+def try_conn(url)
+    count = 0
+    begin
+      yield
+    rescue Errno::ECONNRESET => e
+      count += 1
+      retry unless count > 10
+      puts "Couldn't retrieve #{url}: #{e}"
     end
-
-    download_results(url, offset + 50, dir)
 end
 
 for year in YEARS
@@ -32,5 +28,25 @@ for year in YEARS
     FileUtils.mkdir_p(dir)
 
     url = "http://www.index.va.gov/search/va/bva_search.jsp?QT=&EW=&AT=&ET=&RPP=50&DB=#{year}"
-    download_results(url, 1, dir)
+
+    offset = 1
+
+    begin
+        page_url = "#{url}&RS=#{offset}"
+        puts "Downloading decisions from #{page_url}"
+        doc = try_conn(page_url) do
+            Nokogiri::HTML(open(page_url))
+        end
+
+        decision_urls = doc.css('#results-area a').collect { |a| a['href'] }
+
+        for decision_url in decision_urls
+            try_conn(decision_url) do
+                file = open(decision_url)
+                IO.copy_stream(file, "#{dir}/#{file.base_uri.to_s.split('/')[-1]}")
+            end
+        end
+
+        offset += 50
+    end while decision_urls.length > 0
 end
