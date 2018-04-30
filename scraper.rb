@@ -1,16 +1,12 @@
 #!/usr/bin/env ruby
 
 require 'uri'
-require 'open-uri'  
+require 'open-uri'
 require 'nokogiri'
 require 'fileutils'
 
 OUT_DIR = 'decisions'
-YEARS = 1992..2016
-
-# SHAME! SHAME! SHAME!
-require 'openssl'
-OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
+YEARS = 2018..2018
 
 def try_conn(url)
     count = 0
@@ -27,8 +23,7 @@ for year in YEARS
     dir = "#{OUT_DIR}/#{year}"
     FileUtils.mkdir_p(dir)
 
-    url = "http://www.index.va.gov/search/va/bva_search.jsp?QT=&EW=&AT=&ET=&RPP=50&DB=#{year}"
-
+    url = "https://www.index.va.gov/search/va/bva_search.jsp?QT=&EW=&AT=&ET=&RPP=50&DB=#{year}"
     offset = 1
 
     begin
